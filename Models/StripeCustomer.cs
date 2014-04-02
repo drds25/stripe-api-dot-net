@@ -14,10 +14,6 @@ namespace StripeAPI.Models
 		public Dictionary<string, string> MetaData { get; set; }
 		public bool? LiveMode { get; set; }
 
-		public JObject ToJObject()
-		{
-			return (JObject)JToken.FromObject(this, new JsonSerializer() { NullValueHandling = NullValueHandling.Ignore, ContractResolver = new JsonLowerCaseUnderscoreContractResolver() });
-		}
 		//protected dynamic JsonRepresentation;
 	}
 
@@ -83,7 +79,7 @@ namespace StripeAPI.Models
 		public int? PercentOff { get; set; }
 		public int? AmountOff { get; set; }
 		public string Currency { get; set; }
-		public StripeDuration Duration { get; set; }
+		public string Duration { get; set; }
 		public int? DurationInMonths { get; set; }
 		public int? MaxRedemptions { get; set; }
 		public int? TimeRedeemed { get; set; }
@@ -98,7 +94,7 @@ namespace StripeAPI.Models
 		public DateTime? Start { get; set; }
 		public DateTime? End { get; set; }
 		public string Customer { get; set; }
-		public StripeSubscription Subscription { get; set; }
+		public string Subscription { get; set; }
 	}
 
 	public class StripeSubscription : StripeObject

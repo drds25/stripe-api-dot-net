@@ -29,6 +29,15 @@ namespace StripeAPI
 			httpHelper = new HttpHelper(ApiUrl, ApiVersion, ApiSecretKey);
 		}
 
+		public StripeList<StripeCustomer> GetCustomers()
+		{
+			var result = httpHelper.ExecuteGet("customers?limit=100");
+			if (result.Success)
+				return Deserialize<StripeList<StripeCustomer>>(result.Response);
+			else
+				return null;
+		}
+
 		public StripeCustomer GetCustomer(StripeCustomer customer)
 		{
 			return GetCustomer(customer.Id);
@@ -43,34 +52,28 @@ namespace StripeAPI
 				return null;
 		}
 
-		public StripeList<StripeCustomer> GetCustomers()
+		public StripeCustomer AddCustomer(StripeCustomer customer)
 		{
-			var result = httpHelper.ExecuteGet("customers");
+			var result = httpHelper.ExecutePostForm("customers", Serialize(customer));
 			if (result.Success)
-				return Deserialize<StripeList<StripeCustomer>>(result.Response);
-			else
-				return null;
-		}
+			{
+				return Deserialize<StripeCustomer>(result.Response);
+			}
 
-		public JObject GetPlans()
+			return null;
+		}
+		
+
+		public StripeList<StripePlan> GetPlans()
 		{
 			var result = httpHelper.ExecuteGet("plans");
 			if (result.Success)
-				return Deserialize<JObject>(result.Response);
+				return Deserialize <StripeList<StripePlan>>(result.Response);
 			else
 				return null;
 		}
 
-		public bool AddCustomer(StripeCustomer customer)
-		{
-			var result = httpHelper.ExecutePostForm("customers", customer.ToJObject());
-			if (result.Success)
-			{
-				var respObj = Deserialize<StripeCustomer>(result.Response);
-			}
-			
-			return true;
-		}
+		
 
 		public T Deserialize<T>(string value)
 		{
@@ -82,6 +85,10 @@ namespace StripeAPI
 													});
 		}
 		
+		public JObject Serialize(StripeObject value)
+		{
+			return (JObject)JToken.FromObject(value, new JsonSerializer() { NullValueHandling = NullValueHandling.Ignore, ContractResolver = new JsonLowerCaseUnderscoreContractResolver() });
+		}
     }
 
 	public class RestResult
