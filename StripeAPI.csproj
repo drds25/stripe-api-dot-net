@@ -47,6 +47,9 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="HttpHelper.cs" />
+    <Compile Include="JsonLowerCaseUnderscoreContractResolver.cs" />
+    <Compile Include="Models\StripeCustomer.cs" />
     <Compile Include="StripeClient.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>

@@ -1,5 +1,7 @@
 ﻿using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
+using Newtonsoft.Json.Serialization;
+using StripeAPI.Models;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -17,141 +19,74 @@ namespace StripeAPI
 		public string ApiSecretKey { get; set; }
 		public string ApiPublicKey { get; set; }
 
-		public StripeClient()
+		private HttpHelper httpHelper;
+
+		public StripeClient(string secretKey)
 		{
 			ApiUrl = "https://api.stripe.com/";
 			ApiVersion = "v1";
+			ApiSecretKey = secretKey;
+			httpHelper = new HttpHelper(ApiUrl, ApiVersion, ApiSecretKey);
 		}
 
-		public async Task<JObject> GetCustomer(string customerId)
+		public async Task<StripeCustomer> GetCustomer(StripeCustomer customer)
 		{
-			var result =  await ExecuteGet("customers/" + customerId);
+			return await GetCustomer(customer.Id);
+		}
+
+		public async Task<StripeCustomer> GetCustomer(string customerId)
+		{
+			var result =  await httpHelper.ExecuteGet("customers/" + customerId);
 			if (result.Success)
-				return result.ResponseObject;
+				return Deserialize<StripeCustomer>(result.Response);
 			else
 				return null;
 		}
 
-		public async Task<bool> AddCustomer()
+		public async Task<StripeList<StripeCustomer>> GetCustomers()
 		{
-			var cust = (dynamic)new JObject();
-			cust.description = "new test customer";
-			cust.email = "dsmith@tragon.com";
-			cust["account_balance"] = -10;
-			cust.card = (dynamic)new JObject();
-			cust.card.number = "4242424242424242";
-			cust.card.exp_month = "01";
-			cust.card.exp_year = "2015";
-			cust.card.cvc = "123";
-			
+			var result = await httpHelper.ExecuteGet("customers");
+			if (result.Success)
+				return Deserialize<StripeList<StripeCustomer>>(result.Response);
+			else
+				return null;
+		}
 
-			var result = await ExecutePost("customers", cust);
+		public async Task<JObject> GetPlans()
+		{
+			var result = await httpHelper.ExecuteGet("plans");
+			if (result.Success)
+				return Deserialize<JObject>(result.Response);
+			else
+				return null;
+		}
+
+		public async Task<bool> AddCustomer(StripeCustomer customer)
+		{
+			var result = await httpHelper.ExecutePostForm("customers", customer.ToJObject());
+			if (result.Success)
+			{
+				var respObj = Deserialize<StripeCustomer>(result.Response);
+			}
 			
 			return true;
 		}
 
-		private async Task<RestResult> ExecuteGet(string command)
+		public T Deserialize<T>(string value)
 		{
-			using (var client = new HttpClient())
-			{
-				client.BaseAddress = new Uri(String.Format("{0}{1}/",ApiUrl,ApiVersion));
-				client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Basic", Convert.ToBase64String(System.Text.ASCIIEncoding.ASCII.GetBytes(string.Format("{0}:{1}", ApiSecretKey, ""))));
-
-				client.DefaultRequestHeaders.Accept.Clear();
-				client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
-
-				RestResult result = new RestResult();
-				HttpResponseMessage response = await client.GetAsync(command);
-				if (response.IsSuccessStatusCode)
-				{
-					String responseData = await response.Content.ReadAsStringAsync();
-					result.Success = true;
-					result.ResponseObject = (JObject)JsonConvert.DeserializeObject(responseData);
-				}
-				else
-				{
-					result.Success = false;
-					result.Error = await response.Content.ReadAsAsync<RestError>();
-				}
-				return result;
-			}
+			return JsonConvert.DeserializeObject<T>(value,
+													new JsonSerializerSettings()
+													{
+														ContractResolver = new JsonLowerCaseUnderscoreContractResolver(),
+														Converters = { new StripeDateTimeConverter() }
+													});
 		}
-
-		private async Task<RestResult> ExecutePost(string command, JObject payload)
-		{
-			using (var client = new HttpClient())
-			{
-				client.BaseAddress = new Uri(String.Format("{0}{1}/", ApiUrl, ApiVersion));
-				client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Basic", Convert.ToBase64String(System.Text.ASCIIEncoding.ASCII.GetBytes(string.Format("{0}:{1}", ApiSecretKey, ""))));
-
-				client.DefaultRequestHeaders.Accept.Clear();
-				client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
-
-				var x = JsonConvert.DeserializeObject<Dictionary<String, dynamic>>(payload.ToString());
-
-				var propList = GetKeyValueList(string.Empty, payload);
-				var content = new FormUrlEncodedContent(propList);
-
-				RestResult result = new RestResult();
-				HttpResponseMessage response = await client.PostAsync(command, content);
-				if (response.IsSuccessStatusCode)
-				{
-					String responseData = await response.Content.ReadAsStringAsync();
-					result.Success = true;
-					result.ResponseObject = (JObject)JsonConvert.DeserializeObject(responseData);
-				}
-				else
-				{
-					result.Success = false;
-					result.Error = await response.Content.ReadAsAsync<RestError>();
-				}
-				return result;
-			}
-		}
-
-		private static List<KeyValuePair<string, string>> GetKeyValueList( string parent, IEnumerable<KeyValuePair<string,JToken>> payload)
-		{
-			var propList = new List<KeyValuePair<string, string>>();
-			foreach (var prop in payload)
-			{
-				if (prop.Value.Type == JTokenType.Object)
-				{
-					propList.AddRange(GetKeyValueList(prop.Key, (JObject)prop.Value));
-				}
-				else
-				{
-					var keyString = prop.Key;
-					if (!String.IsNullOrWhiteSpace(parent))
-					{
-						keyString = String.Format("{0}[{1}]", parent, prop.Key);
-					}
-					propList.Add(new KeyValuePair<string, string>(keyString, prop.Value.ToString()));
-				}
-			}
-
-			
-			//foreach (var p in payload.Properties())
-			//{
-			//	if (p.Value.Type == JTokenType.Object)
-			//	{
-			//		foreach(var innerP in p.Value)
-			//		{
-			//			propList.Add(new KeyValuePair<string, string>(String.Format("{0}[{1}]", p.Name, innerP), p.Value.ToString()));	
-			//		}
-					
-			//	}
-			//	else
-			//	{
-			//		propList.Add(new KeyValuePair<string, string>(p.Name, p.Value.ToString()));
-			//	}
-			//}
-			return propList;
-		}
+		
     }
 
 	public class RestResult
 	{
-		public JObject ResponseObject { get; set; }
+		public string Response { get; set; }
 		public bool Success { get; set; }
 		public RestError Error { get; set; }
 	}
