@@ -39,7 +39,67 @@ namespace StripeAPI
 			BaseAddress = new Uri(String.Format("{0}{1}/", apiUrl, apiVersion));
 		}
 
-		public async Task<RestResult> ExecuteGet(string command)
+		public RestResult ExecuteGet(string command)
+		{
+			using (var client = new HttpClient())
+			{
+				client.BaseAddress = BaseAddress;
+				client.DefaultRequestHeaders.Authorization = authHeader;
+
+				client.DefaultRequestHeaders.Accept.Clear();
+				client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
+
+				RestResult result = new RestResult();
+				var response = client.GetAsync(command);
+				
+				if (response.Result.IsSuccessStatusCode)
+				{
+					String responseData = response.Result.Content.ReadAsStringAsync().Result;
+					result.Success = true;
+					result.Response = responseData;
+				}
+				else
+				{
+					result.Success = false;
+					result.Error = response.Result.Content.ReadAsAsync<RestError>().Result;
+				}
+				return result;
+			}
+		}
+
+		public RestResult ExecutePostForm(string command, JObject payload)
+		{
+			using (var client = new HttpClient())
+			{
+				client.BaseAddress = BaseAddress;
+				client.DefaultRequestHeaders.Authorization = authHeader;
+
+				client.DefaultRequestHeaders.Accept.Clear();
+				client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
+
+				var x = JsonConvert.DeserializeObject<Dictionary<String, dynamic>>(payload.ToString());
+
+				var propList = GetKeyValueList(string.Empty, payload);
+				var content = new FormUrlEncodedContent(propList);
+
+				RestResult result = new RestResult();
+				var response = client.PostAsync(command, content);
+				if (response.Result.IsSuccessStatusCode)
+				{
+					String responseData = response.Result.Content.ReadAsStringAsync().Result;
+					result.Success = true;
+					result.Response = responseData;
+				}
+				else
+				{
+					result.Success = false;
+					result.Error = response.Result.Content.ReadAsAsync<RestError>().Result;
+				}
+				return result;
+			}
+		}
+
+		public async Task<RestResult> ExecuteGetAsync(string command)
 		{
 			using (var client = new HttpClient())
 			{
@@ -51,7 +111,7 @@ namespace StripeAPI
 
 				RestResult result = new RestResult();
 				HttpResponseMessage response = await client.GetAsync(command);
-				
+
 				if (response.IsSuccessStatusCode)
 				{
 					String responseData = await response.Content.ReadAsStringAsync();
@@ -67,7 +127,7 @@ namespace StripeAPI
 			}
 		}
 
-		public async Task<RestResult> ExecutePostForm(string command, JObject payload)
+		public async Task<RestResult> ExecutePostFormAsync(string command, JObject payload)
 		{
 			using (var client = new HttpClient())
 			{

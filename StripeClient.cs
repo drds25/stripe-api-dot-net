@@ -29,41 +29,41 @@ namespace StripeAPI
 			httpHelper = new HttpHelper(ApiUrl, ApiVersion, ApiSecretKey);
 		}
 
-		public async Task<StripeCustomer> GetCustomer(StripeCustomer customer)
+		public StripeCustomer GetCustomer(StripeCustomer customer)
 		{
-			return await GetCustomer(customer.Id);
+			return GetCustomer(customer.Id);
 		}
 
-		public async Task<StripeCustomer> GetCustomer(string customerId)
+		public StripeCustomer GetCustomer(string customerId)
 		{
-			var result =  await httpHelper.ExecuteGet("customers/" + customerId);
+			var result =  httpHelper.ExecuteGet("customers/" + customerId);
 			if (result.Success)
 				return Deserialize<StripeCustomer>(result.Response);
 			else
 				return null;
 		}
 
-		public async Task<StripeList<StripeCustomer>> GetCustomers()
+		public StripeList<StripeCustomer> GetCustomers()
 		{
-			var result = await httpHelper.ExecuteGet("customers");
+			var result = httpHelper.ExecuteGet("customers");
 			if (result.Success)
 				return Deserialize<StripeList<StripeCustomer>>(result.Response);
 			else
 				return null;
 		}
 
-		public async Task<JObject> GetPlans()
+		public JObject GetPlans()
 		{
-			var result = await httpHelper.ExecuteGet("plans");
+			var result = httpHelper.ExecuteGet("plans");
 			if (result.Success)
 				return Deserialize<JObject>(result.Response);
 			else
 				return null;
 		}
 
-		public async Task<bool> AddCustomer(StripeCustomer customer)
+		public bool AddCustomer(StripeCustomer customer)
 		{
-			var result = await httpHelper.ExecutePostForm("customers", customer.ToJObject());
+			var result = httpHelper.ExecutePostForm("customers", customer.ToJObject());
 			if (result.Success)
 			{
 				var respObj = Deserialize<StripeCustomer>(result.Response);
