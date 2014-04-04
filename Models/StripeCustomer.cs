@@ -446,6 +446,56 @@ namespace StripeAPI.Models
 		public string StatementDescription { get; set; }
 	}
 	
+	public class StripeMoneyAmount
+	{
+		private decimal value;
+		public decimal Value
+		{
+			get { return value; }
+			set { this.value = value; }
+		}
+		public StripeMoneyAmount() { }
+		public StripeMoneyAmount(decimal amount)
+		{
+			value = amount;
+		}
+
+		public override bool Equals(object other)
+		{
+			if (other == null) return false;
+			return value.Equals(other);
+		}
+
+		public override int GetHashCode()
+		{
+			return value.GetHashCode();
+		}
+
+		public override string ToString()
+		{
+			return value.ToString();
+		}
+
+		public static implicit operator StripeMoneyAmount(Decimal amount)
+		{
+			return new StripeMoneyAmount(amount);
+		}
+
+		public static implicit operator decimal(StripeMoneyAmount amount)
+		{
+			return amount.Value;
+		}
+
+		public static explicit operator decimal(StripeMoneyAmount amount)
+		{
+			return amount.Value;
+		}
+
+		public static explicit operator StripeMoneyAmount(decimal amount)
+		{
+			return new StripeMoneyAmount(amount);
+		}
+	}
 	public class StripePeriod
 	{
 		public DateTime? Start { get; set; }

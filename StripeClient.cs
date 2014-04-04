@@ -191,6 +191,20 @@ namespace StripeAPI
 			else
 				return null;
 		} 
+
+		public StripeInvoice GetNextInvoice(string customerId, StripeGetOptions getOptions = null)
+		{
+			var url = "invoices/upcoming";
+			getOptions = getOptions == null ? new StripeGetOptions() : getOptions;
+			getOptions.TargetID = customerId;
+			getOptions.TargetType = "customer";
+
+			var result = httpHelper.ExecuteGet(String.Format(url), getOptions);
+			if (result.Success)
+				return Deserialize<StripeInvoice>(result.Response);
+			else
+				return null;
+		}
 		#endregion
 
 		public T Deserialize<T>(string value) where T : StripeObject, new()
