@@ -10,6 +10,31 @@ using System.Threading.Tasks;
 
 namespace StripeAPI
 {
+	public class StripeGetOptions
+	{
+		public DateTime? Date;
+		public int? Limit;
+		public string StartingAfterId;
+		public string TargetID;
+		public string TargetType;
+
+		private const string paramFormat = "{0}={1}";
+		public string ToQuerystring()
+		{
+			var sb = new StringBuilder();
+			if (!String.IsNullOrWhiteSpace(TargetID) && !String.IsNullOrWhiteSpace(TargetType))
+			{
+				sb.AppendFormat(paramFormat,TargetType, TargetID);
+			}
+			if (Limit.HasValue)
+				sb.AppendFormat(paramFormat, "limit", Limit.Value.ToString());
+
+			if (sb.Length > 0)
+				return "?" + sb.ToString();
+			else
+				return "";
+		}
+	}
 	public class HttpHelper
 	{
 		public Uri BaseAddress { get; set; }
@@ -39,8 +64,9 @@ namespace StripeAPI
 			BaseAddress = new Uri(String.Format("{0}{1}/", apiUrl, apiVersion));
 		}
 
-		public RestResult ExecuteGet(string command)
+		public RestResult ExecuteGet(string command, StripeGetOptions getOptions = null)
 		{
+			getOptions = getOptions == null ? new StripeGetOptions() : getOptions;
 			using (var client = new HttpClient())
 			{
 				client.BaseAddress = BaseAddress;
@@ -50,7 +76,7 @@ namespace StripeAPI
 				client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
 
 				RestResult result = new RestResult();
-				var response = client.GetAsync(command);
+				var response = client.GetAsync(command + getOptions.ToQuerystring());
 				
 				if (response.Result.IsSuccessStatusCode)
 				{
@@ -92,8 +118,14 @@ namespace StripeAPI
 				}
 				else
 				{
+					var errorString = response.Result.Content.ReadAsStringAsync().Result;
+					result = JsonConvert.DeserializeObject<RestResult>(errorString,
+													new JsonSerializerSettings()
+													{
+														ContractResolver = new JsonLowerCaseUnderscoreContractResolver(),
+														Converters = { new StripeDateTimeConverter() }
+													});
 					result.Success = false;
-					result.Error = response.Result.Content.ReadAsAsync<RestError>().Result;
 				}
 				return result;
 			}

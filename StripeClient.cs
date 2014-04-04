@@ -28,24 +28,24 @@ namespace StripeAPI
 			ApiSecretKey = secretKey;
 			httpHelper = new HttpHelper(ApiUrl, ApiVersion, ApiSecretKey);
 		}
-
-		public StripeList<StripeCustomer> GetCustomers()
+		#region Customer
+		public StripeList<StripeCustomer> GetCustomers(StripeGetOptions getOptions = null)
 		{
-			var result = httpHelper.ExecuteGet("customers?limit=100");
+			var result = httpHelper.ExecuteGet("customers",getOptions);
 			if (result.Success)
 				return Deserialize<StripeList<StripeCustomer>>(result.Response);
 			else
 				return null;
 		}
 
-		public StripeCustomer GetCustomer(StripeCustomer customer)
+		public StripeCustomer GetCustomer(StripeCustomer customer, StripeGetOptions getOptions = null)
 		{
-			return GetCustomer(customer.Id);
+			return GetCustomer(customer.Id, getOptions);
 		}
 
-		public StripeCustomer GetCustomer(string customerId)
+		public StripeCustomer GetCustomer(string customerId, StripeGetOptions getOptions = null)
 		{
-			var result =  httpHelper.ExecuteGet("customers/" + customerId);
+			var result =  httpHelper.ExecuteGet("customers/" + customerId, getOptions);
 			if (result.Success)
 				return Deserialize<StripeCustomer>(result.Response);
 			else
@@ -54,7 +54,7 @@ namespace StripeAPI
 
 		public StripeCustomer AddCustomer(StripeCustomer customer)
 		{
-			var result = httpHelper.ExecutePostForm("customers", Serialize(customer));
+			var result = httpHelper.ExecutePostForm("customers", customer.ToJson());
 			if (result.Success)
 			{
 				return Deserialize<StripeCustomer>(result.Response);
@@ -62,32 +62,150 @@ namespace StripeAPI
 
 			return null;
 		}
-		
 
-		public StripeList<StripePlan> GetPlans()
+		public StripeCustomer UpdateCustomer(StripeCustomer customer)
 		{
-			var result = httpHelper.ExecuteGet("plans");
+			var url = "customers/" + customer.Id;
+			//remove properties not allowed for update command.
+			customer.Id = null;
+			customer.Discount = null;
+			customer.Subscriptions = null;
+			customer.Cards = null;
+			customer.Created = null;
+			customer.Delinquent = null;
+			customer.Currency = null;
+
+			var result = httpHelper.ExecutePostForm(url, customer.ToJson());
 			if (result.Success)
-				return Deserialize <StripeList<StripePlan>>(result.Response);
+			{
+				return Deserialize<StripeCustomer>(result.Response);
+			}
+
+			return null;
+		}
+		#endregion
+		#region Subscriptions
+
+		public StripeList<StripeSubscription> GetCustomerSubscriptions(StripeCustomer customer, StripeGetOptions getOptions = null)
+		{
+			return GetCustomerSubscriptions(customer.Id, getOptions);
+		}
+
+		public StripeList<StripeSubscription> GetCustomerSubscriptions(string customerId, StripeGetOptions getOptions = null)
+		{
+			var url = "customers/" + customerId + "/subscriptions";
+			var result = httpHelper.ExecuteGet(url, getOptions);
+			if (result.Success)
+				return Deserialize<StripeList<StripeSubscription>>(result.Response);
+			else
+				return null;
+		}
+		public StripeSubscription GetSubscription(StripeCustomer customer, string subscriptionId)
+		{
+			return GetSubscription(customer.Id, subscriptionId);
+		}
+
+		public StripeSubscription GetSubscription(string customerId, string subscriptionId, StripeGetOptions getOptions = null)
+		{
+			var url = "customers/" + customerId + "/subscriptions/" + subscriptionId;
+			var result = httpHelper.ExecuteGet(url, getOptions);
+			if (result.Success)
+				return Deserialize<StripeSubscription>(result.Response);
 			else
 				return null;
 		}
 
-		
-
-		public T Deserialize<T>(string value)
+		public StripeSubscription AddSubscription(StripeSubscription newSubscription, string customerId)
 		{
-			return JsonConvert.DeserializeObject<T>(value,
-													new JsonSerializerSettings()
-													{
-														ContractResolver = new JsonLowerCaseUnderscoreContractResolver(),
-														Converters = { new StripeDateTimeConverter() }
-													});
+			var url = "customers/" + customerId + "/subscriptions";
+			newSubscription.Id = null;
+			var result = httpHelper.ExecutePostForm(url, newSubscription.ToJson());
+			if (result.Success)
+			{
+				var a = Deserialize<StripeSubscription>(result.Response);
+				return a;
+			}
+
+			return null;
+		}
+
+		public StripeSubscription UpdateSubscription(StripeSubscriptionUpdate subscriptionUpdate, string customerId)
+		{
+			var url = "customers/" + customerId + "/subscriptions/" + subscriptionUpdate.Id;
+			//remove properties not allowed for update command.
+			subscriptionUpdate.Id = null;
+			
+
+			var result = httpHelper.ExecutePostForm(url, subscriptionUpdate.ToJson());
+			if (result.Success)
+			{
+				return Deserialize<StripeSubscription>(result.Response);
+			}
+
+			return null;
+		}
+		#endregion
+
+		#region Plans
+		public StripeList<StripePlan> GetPlans(StripeGetOptions getOptions = null)
+		{
+			var result = httpHelper.ExecuteGet("plans", getOptions);
+			if (result.Success)
+				return Deserialize<StripeList<StripePlan>>(result.Response);
+			else
+				return null;
+		}
+
+		public StripeList<StripePlan> GetPlans(string planId, StripeGetOptions getOptions = null)
+		{
+			var url = "plans/{0}";
+			var result = httpHelper.ExecuteGet(String.Format(url, planId),getOptions);
+			if (result.Success)
+				return Deserialize<StripeList<StripePlan>>(result.Response);
+			else
+				return null;
+		}
+
+		#endregion
+		#region Invoices
+		public StripeList<StripeInvoice> GetInvoices(StripeGetOptions getOptions = null)
+		{
+			var url = "invoices";
+			var result = httpHelper.ExecuteGet(String.Format(url),getOptions);
+			if (result.Success)
+				return Deserialize<StripeList<StripeInvoice>>(result.Response);
+			else
+				return null;
+		}
+
+		public StripeList<StripeInvoice> GetInvoices(string customerId, StripeGetOptions getOptions = null)
+		{
+			var url = "invoices";
+			getOptions = getOptions == null ? new StripeGetOptions() : getOptions;
+			getOptions.TargetID = customerId;
+			getOptions.TargetType = "customer";
+
+			var result = httpHelper.ExecuteGet(String.Format(url), getOptions);
+			if (result.Success)
+				return Deserialize<StripeList<StripeInvoice>>(result.Response);
+			else
+				return null;
+		} 
+		#endregion
+
+		public T Deserialize<T>(string value) where T : StripeObject, new()
+		{
+			return (T)new T().FromJson(value);
 		}
 		
 		public JObject Serialize(StripeObject value)
 		{
-			return (JObject)JToken.FromObject(value, new JsonSerializer() { NullValueHandling = NullValueHandling.Ignore, ContractResolver = new JsonLowerCaseUnderscoreContractResolver() });
+			return (JObject)JToken.FromObject(value, new JsonSerializer()
+			{
+				NullValueHandling = NullValueHandling.Ignore,
+				ContractResolver = new JsonLowerCaseUnderscoreContractResolver(),
+				Converters = { new StripeDateTimeConverter() }
+			});
 		}
     }
 
